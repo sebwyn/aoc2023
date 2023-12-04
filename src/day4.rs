@@ -1,7 +1,7 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 
 pub struct LotteryInfo {
-    num_winning: u32,
+    num_winning: usize,
 }
 
 #[aoc_generator(day4)]
@@ -9,25 +9,23 @@ pub fn construct_lottery_info(input: &str) -> Vec<LotteryInfo> {
     input
         .lines()
         .map(|line| {
-            let (_, numbers) = line.split_once(':').unwrap();
+            let numbers = line.split_once(':').unwrap().1;
             let (winning, held) = numbers.split_once('|').unwrap();
 
-            let winning_numbers: Vec<u32> = winning
-                .trim()
-                .split_ascii_whitespace()
-                .map(|n| n.parse().unwrap())
-                .collect();
+            let read_numbers = |a: &str| -> Vec<u32> {
+                a.trim()
+                    .split_ascii_whitespace()
+                    .map(|n| n.parse().unwrap())
+                    .collect()
+            };
 
-            let held_numbers: Vec<u32> = held
-                .trim()
-                .split_ascii_whitespace()
-                .map(|n| n.parse().unwrap())
-                .collect();
+            let winning_numbers: Vec<u32> = read_numbers(winning);
+            let held_numbers: Vec<u32> = read_numbers(held);
 
             let num_winning = winning_numbers
                 .iter()
-                .filter(|w| held_numbers.iter().find(|h| w == h).is_some())
-                .count() as u32;
+                .filter(|w| held_numbers.contains(w))
+                .count();
 
             LotteryInfo { num_winning }
         })
@@ -38,7 +36,7 @@ pub fn construct_lottery_info(input: &str) -> Vec<LotteryInfo> {
 pub fn p1(info: &[LotteryInfo]) -> u32 {
     info.iter()
         .filter(|info| info.num_winning > 0)
-        .map(|lottery_info| 2u32.pow(lottery_info.num_winning - 1))
+        .map(|lottery_info| 2u32.pow(lottery_info.num_winning as u32 - 1))
         .sum()
 }
 
@@ -48,10 +46,12 @@ pub fn p2(info: &[LotteryInfo]) -> u32 {
 
     for (i, card_info) in info.iter().enumerate() {
         let num_copies = card_counts[i];
+
         let first_scratchcard_won = i + 1;
-        let last_scratchcard_copy = (i + card_info.num_winning as usize).min(info.len());
+        let last_scratchcard_won = (i + card_info.num_winning).min(info.len());
+        
         card_counts
-            .get_mut(first_scratchcard_won..=last_scratchcard_copy)
+            .get_mut(first_scratchcard_won..=last_scratchcard_won)
             .unwrap()
             .iter_mut()
             .for_each(|c| *c += num_copies);
