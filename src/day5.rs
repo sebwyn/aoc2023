@@ -1,5 +1,4 @@
-
-use std::{ops::Range, cmp::{max, min}, iter};
+use std::{ops::Range, cmp::{max, min}};
 
 use aoc_runner_derive::{aoc, aoc_generator};
 
