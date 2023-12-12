@@ -5,20 +5,20 @@ use regex::RegexBuilder;
 
 #[derive(Debug)]
 pub struct Node {
-    left: String,
-    right: String,
+    left: [char; 3],
+    right: [char; 3],
 }
 
 #[derive(Debug)]
 pub struct Router {
-    instructions: String,
-    network: HashMap<String, Node>,
+    instructions: Vec<char>,
+    network: HashMap<[char; 3], Node>,
 }
 
 #[aoc_generator(day8)]
 fn create_network(input: &str) -> Router {
     let mut network = HashMap::new();
-    let instructions = input.lines().nth(0).unwrap().to_string();
+    let instructions = input.lines().nth(0).unwrap().chars().collect();
 
     let parser = RegexBuilder::new(r"^([A-Z|1-9]{3}) = \(([A-Z|1-9]{3}), ([A-Z|1-9]{3})\)$")
         .multi_line(true)
@@ -26,10 +26,10 @@ fn create_network(input: &str) -> Router {
         .unwrap();
 
     for capture in parser.captures_iter(input) {
-        let key = capture.get(1).unwrap().as_str().to_string();
-        let left = capture.get(2).unwrap().as_str().to_string();
-        let right = capture.get(3).unwrap().as_str().to_string();
-        network.insert(key.to_string(), Node { left, right });
+        let key = capture.get(1).unwrap().as_str().chars().collect::<Vec<_>>().try_into().unwrap();
+        let left = capture.get(2).unwrap().as_str().chars().collect::<Vec<_>>().try_into().unwrap();
+        let right = capture.get(3).unwrap().as_str().chars().collect::<Vec<_>>().try_into().unwrap();
+        network.insert(key, Node { left, right });
     }
 
     Router {
@@ -41,15 +41,14 @@ fn create_network(input: &str) -> Router {
 #[aoc(day8, part1)]
 pub fn p1(input: &Router) -> usize {
     let mut i = 0;
-    let mut current_node = "AAA";
-    while current_node != "ZZZ" {
+    let mut current_node = ['A', 'A', 'A'];
+    while current_node != ['Z', 'Z', 'Z'] {
         let ii = i % input.instructions.len();
-
-        let direction = input.instructions.chars().nth(ii).unwrap();
+        let direction = input.instructions[ii];
 
         match direction {
-            'L' => current_node = &input.network.get(current_node).unwrap().left,
-            'R' => current_node = &input.network.get(current_node).unwrap().right,
+            'L' => current_node = input.network.get(&current_node).unwrap().left,
+            'R' => current_node = input.network.get(&current_node).unwrap().right,
             _ => panic!("Unsupported direction!"),
         }
 
@@ -61,11 +60,11 @@ pub fn p1(input: &Router) -> usize {
 
 #[aoc(day8, part2)]
 pub fn p2(input: &Router) -> usize {
-    let mut current_nodes: Vec<&str> = input
+    let mut current_nodes: Vec<&[char; 3]> = input
         .network
         .keys()
-        .filter(|s| s.chars().last().unwrap() == 'A')
-        .map(|s| s.as_str())
+        .filter(|s| s[2] == 'A')
+        .map(|s| s)
         .collect();
 
     let num_zs_to_find = current_nodes.len();
@@ -75,19 +74,19 @@ pub fn p2(input: &Router) -> usize {
     let mut i: usize = 0;
     while first_found_zs.len() < num_zs_to_find {
         let ii = i % input.instructions.len();
-        let direction = input.instructions.chars().nth(ii).unwrap();
+        let direction = input.instructions[ii];
 
         for node in current_nodes.iter() {
-            if node.chars().last().unwrap() == 'Z' {
+            if node[2] == 'Z' {
                 first_found_zs.push(i)
             }
         }
-        current_nodes.retain(|s| s.chars().last().unwrap() != 'Z');
+        current_nodes.retain(|s| s[2] != 'Z');
 
         for current_node in current_nodes.iter_mut() {
             match direction {
-                'L' => *current_node = input.network.get(*current_node).unwrap().left.as_str(),
-                'R' => *current_node = input.network.get(*current_node).unwrap().right.as_str(),
+                'L' => *current_node = &input.network.get(*current_node).unwrap().left,
+                'R' => *current_node = &input.network.get(*current_node).unwrap().right,
                 _ => panic!("Unsupported direction!"),
             }
         }
@@ -101,12 +100,10 @@ pub fn p2(input: &Router) -> usize {
 }
 
 fn gcd(mut a: usize, mut b: usize) -> usize {
+    //turns out the branchless version of this operation is like 25% faster
     while a != b {
-        if a > b {
-            a -= b;
-        } else {
-            b -= a;
-        }
+        a -= (a > b) as usize * b;
+        b -= (b > a) as usize * a;
     }
     return a;
 }
